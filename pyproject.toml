@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "forensidvr"
+version = "0.1.0"
+description = "Vendor-agnostic forensic acquisition, parsing, recovery and reporting for DVR/NVR storage."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "ForensiDVR contributors" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Security",
+]
+dependencies = [
+    "typer>=0.12",  # MIT
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+    "ruff>=0.6",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+forensidvr = "forensidvr.cli.main:app"
+
+# Third-party plugins register here; built-in plugins are discovered by package scan.
+# [project.entry-points."forensidvr.fs"]
+# [project.entry-points."forensidvr.formats"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["forensidvr"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "ewftools: requires libewf command-line tools (ewfacquire) for independent E01 validation",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "S"]
+ignore = ["S101", "S324"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "B017", "SIM115", "RUF059"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+packages = ["forensidvr"]
