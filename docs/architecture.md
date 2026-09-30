@@ -1,6 +1,6 @@
 # ForensiDVR Architecture
 
-Status: Phase 0/1. Sections for later phases are marked *planned*.
+Status: Phase 0-2. Sections for later phases are marked *planned*.
 
 ## Principles
 
@@ -21,7 +21,7 @@ Status: Phase 0/1. Sections for later phases are marked *planned*.
 forensidvr/
   core/         errors, io (ByteSource), readonly, hashing, custody, models, plugins, config, case
   acquisition/  readers (raw/split/E01), ewf, imager, logical, workflow
-  identify/     device fingerprinting                        (planned, Phase 2)
+  identify/     device fingerprinting (docs/identification.md) (Phase 2)
   fs/           FSPlugin interface + vendor-family plugins   (generic fallback now; vendors Phase 3-4)
   formats/      FormatPlugin interface + container parsers   (Phase 3-4)
   recovery/     stale-index recovery, carving                (Phase 5)
@@ -57,7 +57,7 @@ flowchart LR
     RO[readonly<br/>O_RDONLY + WriteBlocker]
     PLUG[plugin registry]
   end
-  subgraph Analysis["analysis (Phase 2+)"]
+  subgraph Analysis["analysis (identify: Phase 2; parsers Phase 3+)"]
     ID[identify] --> FS[fs plugins] --> FMT[format plugins]
     FS --> REC[recovery]
     FMT --> TL[timeline] --> AN[analytics]

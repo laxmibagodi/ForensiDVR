@@ -33,6 +33,7 @@ forensidvr = "forensidvr.cli.main:app"
 # Third-party plugins register here; built-in plugins are discovered by package scan.
 # [project.entry-points."forensidvr.fs"]
 # [project.entry-points."forensidvr.formats"]
+# [project.entry-points."forensidvr.identify"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["forensidvr"]
