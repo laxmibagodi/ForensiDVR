@@ -9,10 +9,12 @@ from pathlib import Path
 from forensidvr.acquisition.imager import AcquisitionResult, ProgressCallback, acquire_raw
 from forensidvr.acquisition.logical import LogicalImportResult, import_logical
 from forensidvr.acquisition.readers import open_image
-from forensidvr.core.case import Case, EvidenceRecord
-from forensidvr.core.errors import AcquisitionError
+from forensidvr.core.case import Case, EvidenceRecord, OutputRecord
+from forensidvr.core.errors import AcquisitionError, CaseError
 from forensidvr.core.hashing import hash_bytes, hash_source
 from forensidvr.core.io import ByteSource
+from forensidvr.core.jsonutil import pretty_json
+from forensidvr.identify.engine import IdentificationResult
 
 
 def _slug(label: str) -> str:
@@ -178,3 +180,51 @@ def import_logical_to_case(
         },
     )
     return result, record
+
+
+def identify_evidence(case: Case, evidence_id: str) -> tuple[IdentificationResult, OutputRecord]:
+    """Re-verify evidence (analysis session), fingerprint the device, export + hash + log the result.
+
+    Raises :class:`EvidenceIntegrityError` before reading anything if the evidence hash changed.
+    """
+    from forensidvr.identify import identify
+    from forensidvr.identify.engine import ENGINE_NAME
+
+    session_id = case.start_session(evidence_id)
+    rec = case.get_evidence(evidence_id)
+    if rec.kind != "disk_image":
+        raise CaseError(f"{evidence_id}: identification needs a disk image, not {rec.kind!r} evidence")
+    with open_image(case.abs(rec.path)) as img:
+        result = identify(img)
+    out_dir = case.root / "exports"
+    out = out_dir / f"identify-{evidence_id}.json"
+    n = 2
+    while out.exists():
+        out = out_dir / f"identify-{evidence_id}-{n}.json"
+        n += 1
+    with open(out, "x", encoding="utf-8") as fh:
+        fh.write(pretty_json(result))
+    orec = case.register_output(
+        out,
+        kind="identification",
+        produced_by=f"{ENGINE_NAME} {result.plugin_version}",
+        evidence_id=evidence_id,
+    )
+    case.log(
+        "identify.result",
+        {
+            "evidence_id": evidence_id,
+            "session_id": session_id,
+            "status": result.status,
+            "vendor": result.vendor,
+            "vendor_family": result.vendor_family,
+            "confidence": result.confidence,
+            "channel_count": result.channel_count,
+            "firmware": result.firmware,
+            "recommended_fs_plugin": result.recommended_fs_plugin,
+            "output": orec.path,
+            "output_sha256": orec.sha256,
+            "warnings": [w.code for w in result.warnings],
+        },
+    )
+    return result, orec

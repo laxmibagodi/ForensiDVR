@@ -9,15 +9,18 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import TYPE_CHECKING, Annotated, Optional
 
 import typer
 
 from forensidvr import TOOL_NAME, __version__
 from forensidvr.core.case import Case
-from forensidvr.core.errors import ForensiDVRError
+from forensidvr.core.errors import EvidenceIntegrityError, ForensiDVRError
 from forensidvr.core.hashing import hash_file
 from forensidvr.core.jsonutil import pretty_json
+
+if TYPE_CHECKING:
+    from forensidvr.identify.engine import IdentificationResult
 
 app = typer.Typer(
     name="forensidvr",
@@ -337,6 +340,51 @@ def custody_show(
         )
 
 
+# -- identify -------------------------------------------------------------------------------
+def _print_identification(r: IdentificationResult) -> None:
+    ch = f"{r.channel_count} (estimated from ids {r.channel_ids})" if r.channel_count else "unknown"
+    typer.echo(f"status      {r.status.upper()}  confidence={r.confidence:.3f}")
+    typer.echo(
+        f"vendor      {r.vendor or '-'}   family: {r.vendor_family or '-'}   model: {r.model_family or '-'}"
+    )
+    typer.echo(
+        f"firmware    {r.firmware or '-'}   fs version: {r.fs_version or '-'}   serial: {r.serial or '-'}"
+    )
+    typer.echo(f"channels    {ch}")
+    typer.echo(f"fs plugin   {r.recommended_fs_plugin}")
+    cands = ", ".join(f"{c.name}={c.score:.3f}" for c in r.family_candidates[:3]) or "-"
+    typer.echo(f"candidates  {cands}")
+    typer.echo(f"evidence    {len(r.signals)} signal(s), {r.bytes_scanned} of {r.image_size} bytes scanned")
+    for w in r.warnings:
+        typer.echo(f"  [{w.severity}] {w.code}: {w.message}")
+
+
+@app.command("identify")
+def identify_cmd(
+    case_dir: CaseDir,
+    evidence_id: Annotated[str, typer.Argument()],
+    examiner: Examiner = None,
+    as_json: AsJson = False,
+) -> None:
+    """Fingerprint vendor/family/model/firmware/channels (re-verifies evidence first; exits 2 on mismatch)."""
+    from forensidvr.acquisition.workflow import identify_evidence
+
+    with _open(case_dir, examiner, "identify") as case:
+        try:
+            result, out = identify_evidence(case, evidence_id)
+        except EvidenceIntegrityError as exc:
+            _fail(str(exc), code=2)
+            return
+        except ForensiDVRError as exc:
+            _fail(str(exc))
+            return
+    if as_json:
+        typer.echo(pretty_json(result), nl=False)
+        return
+    _print_identification(result)
+    typer.echo(f"saved       {out.path}  sha256={out.sha256}")
+
+
 # -- image ----------------------------------------------------------------------------------
 @image_app.command("info")
 def image_info(
@@ -358,16 +406,39 @@ def image_info(
     typer.echo(pretty_json(d), nl=False)
 
 
+@image_app.command("identify")
+def image_identify(image: Annotated[Path, typer.Argument()], as_json: AsJson = False) -> None:
+    """Preview identification of an image outside any case (read-only; nothing is logged)."""
+    from forensidvr.acquisition.readers import open_image
+    from forensidvr.identify import identify
+
+    try:
+        with open_image(image) as r:
+            result = identify(r)
+    except (ForensiDVRError, OSError) as exc:
+        _fail(str(exc))
+        return
+    if as_json:
+        typer.echo(pretty_json(result), nl=False)
+    else:
+        _print_identification(result)
+        typer.echo(
+            "note        preview only - not recorded in any case; use `forensidvr identify` for evidence"
+        )
+
+
 # -- plugins --------------------------------------------------------------------------------
 @plugins_app.command("list")
 def plugins_list() -> None:
     """List discovered file-system and format plugins."""
     from forensidvr.formats import discover_format_plugins
     from forensidvr.fs import discover_fs_plugins
+    from forensidvr.identify import discover_identifiers
 
     for title, rep in (
         ("File-system plugins", discover_fs_plugins()),
         ("Format plugins", discover_format_plugins()),
+        ("Identifier plugins", discover_identifiers()),
     ):
         typer.echo(f"{title}:")
         for p in rep.plugins:
