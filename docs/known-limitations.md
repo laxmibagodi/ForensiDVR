@@ -19,4 +19,24 @@ phase. Anything listed here must also be mentioned in the "Limitations" section 
 
 ## Proprietary DVR formats
 
-Not yet implemented (Phases 2+). No format specifications have been assumed so far.
+Phase 2 implements identification only (no recording extraction yet). Every assumption below is
+validated **only against synthetic images** built from the cited sources; no real DVR disk has been
+tested. Sources are listed in `docs/identification.md`.
+
+| # | Assumption | Status | Source / reason |
+|---|---|---|---|
+| F1 | Hikvision master-sector signature `HIKVISION@HANGZHOU` at FS offset 0x210; field offsets (+0x38 capacity ... +0xE0 init time) relative to it | Cited, EXPERIMENTAL | Han/Jeong/Lee 2015; two independent open-source parsers agree. Only FS version `HIK.2011.03.08` is documented; other firmware may differ. |
+| F2 | `HIKBTREE` signature 16 bytes after the recorded HIKBTREE offset; offsets partition-relative | Cited, EXPERIMENTAL | X-Ways X-Tension; akira7799 parser. |
+| F3 | System log records start with `RATS\x14\x00\x00\x00` | Cited, EXPERIMENTAL | akira7799 parser. Record body layout used in fixtures (u32 time, u16 type, text) is UNVERIFIED. |
+| F4 | `HIK.yyyy.mm.dd` version string lies in the master sector (fixture places it at 0x230) | UNVERIFIED placement | Parser READMEs mention the string; exact offset not confirmed, so the engine searches the whole sector. |
+| F5 | Hikvision channel count is not estimated in Phase 2 | Limitation | Needs HIKBTREE entry parsing (Phase 3). |
+| F6 | `DHFS4.1` magic at offset 0; partition table at 0x3C34, 64-byte entries, boot-sector offset @20 and partition offset @48 in sectors, terminated by `AA55AA55` | Cited, EXPERIMENTAL | dhfs_extractor (MIT). Other DHFS versions are flagged `UNSUPPORTED_DHFS_VERSION`. |
+| F7 | DHFS superblock fields (+0x10/0x14 packed dates, +0x2C block size, +0x30 fragment size, +0x44/0x48/0x4C descriptor/data area, +0xF8 log offset in blocks, absolute) | Cited, EXPERIMENTAL | dhfs_extractor / X-Ways DHFS X-Tension. |
+| F8 | DHAV frame header/trailer layout and packed date-time | Cited | FFmpeg `dhav.c`. The header checksum algorithm is UNVERIFIED (FFmpeg ignores it; fixtures use byte-sum). Whether the channel byte is 0- or 1-based is UNVERIFIED; raw ids are reported. |
+| F9 | Dahua packed times are device-local time with unknown zone | Limitation | No UTC is derived until Phase 6; the raw value is always kept. |
+| F10 | Channel count = distinct channel ids in sampled frame headers | Estimate | Idle or disabled channels, or channels outside the sampled windows, are missed. |
+| F11 | Rebrand mapping: CP Plus -> dahua (0.6), Honeywell -> dahua 0.4 / hikvision 0.3, Godrej -> 0.2 each | UNVERIFIED | Public product/market reports only; kept below 1.0 and overridable in `oem_signatures.json`. |
+| F12 | Uniview, TP-Link VIGI, Matrix: brand strings only, no file-system signature | Limitation | No public file-system documentation found; these fall back to `unknown - attempt generic carving` with `FAMILY_UNKNOWN`. |
+| F13 | Model-name regexes (`DS-7xxx`, `DH-XVR...`, `CP-UVR...`, `VIGI NVRxxxx`) and firmware/serial patterns | UNVERIFIED | Public product naming, not observed on disk; low weight (0.3) or informational (0). |
+| F14 | Synthetic images are scaled down (4 MiB data blocks, 32 MiB disks) | Limitation | Fixture sizes chosen for CI speed. |
+| F15 | Identification reads ~5 MiB of a disk (head, 64 sampled windows, tail, pointed-to structures) | Limitation | Vendor strings outside those regions are not seen; full-disk string search is left to later phases. |

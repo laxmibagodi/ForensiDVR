@@ -1,0 +1,32 @@
+{
+  "_comment": "Vendor/OEM string signatures and rebrand-to-family mapping. Data only: edit here to add a vendor. 'unverified' entries are assumptions from public product naming, not from disk images; see docs/known-limitations.md.",
+  "schema": 1,
+  "families": {
+    "hikvision": {"default_vendor": "Hikvision", "fs_plugin": "hikvision-hikbtree"},
+    "dahua": {"default_vendor": "Dahua", "fs_plugin": "dahua-dhfs"}
+  },
+  "vendors": [
+    {"vendor": "Hikvision", "families": {"hikvision": 1.0}, "weight": 0.5,
+     "patterns": ["\\bHIKVISION\\b", "\\bHangzhou Hikvision\\b"],
+     "models": [{"regex": "\\bDS-(?:7|8|9)\\d{3}[A-Z0-9-]*", "unverified": true}]},
+    {"vendor": "Dahua", "families": {"dahua": 1.0}, "weight": 0.5,
+     "patterns": ["\\bDAHUA\\b", "\\bDahua Technology\\b"],
+     "models": [{"regex": "\\bDH-(?:XVR|NVR|HCVR)[A-Z0-9-]*", "unverified": true}]},
+    {"vendor": "CP Plus", "families": {"dahua": 0.6}, "weight": 0.6, "unverified": true,
+     "note": "Widely reported as Dahua OEM; mapping weight kept below 1.0 because some models may use other platforms.",
+     "patterns": ["\\bCP[ -]?PLUS\\b"],
+     "models": [{"regex": "\\bCP-(?:UVR|UNR|VR)[A-Z0-9-]*", "unverified": true}]},
+    {"vendor": "Honeywell", "families": {"dahua": 0.4, "hikvision": 0.3}, "weight": 0.5, "unverified": true,
+     "note": "Rebrand platform varies by product line.",
+     "patterns": ["\\bHONEYWELL\\b"]},
+    {"vendor": "Godrej", "families": {"dahua": 0.2, "hikvision": 0.2}, "weight": 0.5, "unverified": true,
+     "patterns": ["\\bGODREJ\\b"]},
+    {"vendor": "Uniview", "families": {}, "weight": 0.5, "unverified": true,
+     "patterns": ["\\bUNIVIEW\\b", "\\bZhejiang Uniview\\b"]},
+    {"vendor": "TP-Link VIGI", "families": {}, "weight": 0.5, "unverified": true,
+     "patterns": ["\\bVIGI\\b", "\\bTP-LINK\\b"],
+     "models": [{"regex": "\\bVIGI NVR\\d{4}[A-Z0-9-]*", "unverified": true}]},
+    {"vendor": "Matrix", "families": {}, "weight": 0.5, "unverified": true,
+     "patterns": ["\\bMATRIX COMSEC\\b", "\\bSATATYA\\b"]}
+  ]
+}

@@ -3,9 +3,10 @@
 Open, vendor-agnostic forensic platform for acquiring, parsing, recovering, analysing and reporting
 evidence from DVR/NVR storage (Smart India Hackathon 2026 — SIH26150, NTRO).
 
-**Status: Phase 0 + 1** — plugin interfaces, hashing, tamper-evident custody log, read-only
-enforcement, case database, raw/split/E01 readers, physical + logical acquisition, CLI.
-Vendor parsers start in Phase 2/3. See `docs/known-limitations.md`.
+**Status: Phase 0-2** — plugin interfaces, hashing, tamper-evident custody log, read-only
+enforcement, case database, raw/split/E01 readers, physical + logical acquisition, CLI, and device
+identification (Hikvision/Dahua families + OEM brand mapping, EXPERIMENTAL; `docs/identification.md`).
+Recording extraction starts in Phase 3. See `docs/known-limitations.md`.
 
 ## Guarantees
 
@@ -37,7 +38,9 @@ forensidvr session ./cases/fir42 EV-0001          # re-verifies hash before anal
 forensidvr custody verify ./cases/fir42           # exit 3 if the log was tampered with
 forensidvr case info ./cases/fir42
 forensidvr image info ./images/dvr2.E01 --hash
+forensidvr image identify ./images/dvr2.E01        # preview, not logged
 forensidvr plugins list
+python -m tests.fixtures.synth ./synthetic-images   # synthetic images + ground truth
 ```
 
 ## Development
