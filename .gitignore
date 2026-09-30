@@ -13,3 +13,5 @@ build/
 *.dd
 *.E0?
 !tests/fixtures/**
+__pycache__/
+*.pyc
